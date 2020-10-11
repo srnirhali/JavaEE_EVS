@@ -1,0 +1,141 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<ui:composition
+    template="/WEB-INF/templates/page-layout.xhtml"
+    xmlns:b="http://bootsfaces.net/ui"
+    xmlns="http://www.w3.org/1999/xhtml"
+    xmlns:h="http://xmlns.jcp.org/jsf/html"
+    xmlns:f="http://xmlns.jcp.org/jsf/core"
+    xmlns:ui="http://xmlns.jcp.org/jsf/facelets">
+    <ui:param name="pageHeadline" value="${msg.VotePageHeadline}"/>
+
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam id="token" name="token" value="#{votingBean.token}" />
+            <f:importConstants type="echo.evs.enums.QuestionType"/>
+        </f:metadata>
+    </ui:define>
+
+    <ui:define name="content">
+
+        <b:row>
+            <b:column span="12">
+                <h:link outcome="homepage" value="${msg.linkToHomepage}"/>
+            </b:column>
+        </b:row>
+
+        <b:alert severity="success" rendered="${votingBean.success}">
+            ${msg.votingSuccessMessage}
+        </b:alert>
+
+        <!-- ____________________________ Submit Token ____________________________ -->
+
+        <b:form id="tokenForm" horizontal="true" rendered="${not votingBean.isTokenSet()}">
+            <b:alert severity="info">
+                ${msg.tokenInfoMessage}
+            </b:alert>
+            <b:alert severity="danger" rendered="${votingBean.failure}">
+                ${votingBean.failureMessage}
+            </b:alert>
+            <b:row>
+                <b:inputText span="6" label-col-md="2" id="name" label="${msg.tokentLabel}" value="#{votingBean.token}" required="true"/>
+                <b:message offset="2" span="6"/>
+            </b:row>
+            <b:row class="topsep">
+                <!-- actionListener - method called during "invoke application" phase -->
+                <!-- missing action - stay on the same page -->
+                <b:commandButton id="submitTokenButton" 
+                                 offset="2" span="2" look="primary"
+                                 actionListener="#{votingBean.getPollByToken}"
+                                 value="${msg.tokenButtonLabel}"/>
+
+
+            </b:row>
+        </b:form>
+
+        <!-- ________________________________ Voting Part _____________________________ -->
+
+        <b:form id="pollForm" rendered="${ votingBean.isTokenSet()}">
+
+            <b:row>
+                <b:column span="12">
+                    <h3>#{votingBean.poll.title}</h3> 
+                </b:column>
+            </b:row>
+            <b:row>
+                <b:column span="2">${msg.pollOrganizerLabel}</b:column>
+                <b:column span="10">#{votingBean.poll.organizer.email}</b:column>
+            </b:row>
+            <b:row>
+                <b:column span="2">${msg.pollStartDateLabel}</b:column>
+                <b:column span="10"><h:outputText value="${votingBean.poll.startDate}"><f:convertDateTime type="both" timeZone="Europe/Berlin" dateStyle="full"/></h:outputText></b:column> 
+            </b:row>
+            <b:row>
+                <b:column span="2">${msg.pollEndDateLabel}</b:column>
+                <b:column span="10"><h:outputText value="${votingBean.poll.endDate}"><f:convertDateTime type="both" timeZone="Europe/Berlin" dateStyle="full"/></h:outputText></b:column> 
+            </b:row>
+
+            <b:row>
+                <b:column span="12">
+                    <h4 style="margin-top:30px; margin-bottom: 20px">#{msg.questionsLabel}</h4> 
+                </b:column>
+            </b:row>
+
+            <b:alert severity="danger" rendered="${votingBean.failure}">
+                Answers invalid. <br/>
+                <span style="white-space: pre-line;">${votingBean.failureMessage}</span>
+            </b:alert>
+
+            <h:dataTable var="question" value="#{votingBean.poll.questions}" style="width:100%">
+                <h:column>
+                    <b:panel collapsible="false" span="12" id="questionPanel">
+
+                        <f:facet name="heading">
+                            <h:outputText value="${question.title}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="${msg.questionTypeSingleLabel}" rendered="${question.questionType == QuestionType.SINGLE_CHOICE}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="${msg.questionTypeYesNoLabel}" rendered="${question.questionType == QuestionType.YES_NO}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="${msg.questionTypeMultipleLabel}" rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="No. of votes: ${question.minChoices}-${question.maxChoices}"  rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}"/>
+                        </f:facet>
+
+                        <h:panelGroup rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}">
+                            <h:dataTable var="item" value="#{question.items}">                    
+                                <h:column class="inlineTooltipFix">                          
+                                    <b:selectBooleanCheckbox  value="${item.participantVote}" caption="#{item.shortName}" disabled="${question.absentVote}" tooltip="#{item.description}" tooltipPosition="right"/>
+                                </h:column>
+                            </h:dataTable>
+                            <hr/>
+                            <b:selectBooleanCheckbox  class="absentVoteCheckbox" value="${question.absentVote}" caption="${msg.questionAbsentionLabel}" onclick="" update="questionPanel" />
+
+                        </h:panelGroup>
+
+                        <h:panelGroup rendered="${question.questionType == QuestionType.SINGLE_CHOICE || question.questionType == QuestionType.YES_NO }">
+                            <h:dataTable var="item" value="#{question.items}">                    
+                                <h:column class="inlineTooltipFix">                          
+                                    <b:selectBooleanCheckbox class="${question.uuid}" value="${item.participantVote}" caption="#{item.shortName}" tooltip="#{item.description}" tooltipPosition="right" onclick=" $('.${question.uuid}').not(this).prop('checked', false);" disabled="${question.absentVote}"/>
+                                </h:column>
+                            </h:dataTable>
+                            <hr/>
+                            <b:selectBooleanCheckbox  class="absentVoteCheckbox" value="${question.absentVote}" caption="${msg.questionAbsentionLabel}" onclick="" update="questionPanel" />
+                        </h:panelGroup>
+
+                    </b:panel>
+                </h:column>
+            </h:dataTable>
+            <b:row><b:column><b:button class="pull-right" value="${msg.markAllAbsentButtonLabel}" onclick="$('.absentVoteCheckbox').not('[checked]').click()"/></b:column></b:row>
+
+            <b:row class="topsep">
+                <!-- actionListener - method called during "invoke application" phase -->
+                <!-- missing action - stay on the same page -->
+                <b:commandButton id="submitVoteButton"
+                                 icon="send"
+                                 offset="4" span="4" look="primary"
+                                 actionListener="#{votingBean.submitVote}"
+                                 value="${msg.submitVoteButtonLabel}"/>
+
+
+            </b:row>
+        </b:form>
+
+    </ui:define>
+</ui:composition>
+
