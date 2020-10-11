@@ -1,0 +1,409 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<ui:composition template="/WEB-INF/templates/page-layout.xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:b="http://bootsfaces.net/ui">
+
+    <ui:param name="pageHeadline" value="${msg.pollEditHeadline}"/>
+
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam id="uuid" name="uuid" value="#{pollEditBean.uuid}"/>
+            <f:importConstants type="echo.evs.enums.QuestionType"/>
+        </f:metadata>
+    </ui:define>
+
+    <ui:define name="content">
+        <h:link outcome="organizerpage" value="${msg.linkBackToPolloverview}"/>
+
+        <b:messages for="uuid"/>
+
+        <b:alert severity="danger" rendered="${pollEditBean.uuid == null}">
+            ${msg.uuidRequiredMessage}
+        </b:alert>
+
+
+        <b:alert severity="info" rendered="${((pollEditBean.uuid != null) and !pollEditBean.valid)}">
+            <h:outputFormat value="${msg.pollEditPollNotFound}">
+                <f:param value="${pollEditBean.uuid}"/>
+            </h:outputFormat>
+        </b:alert>
+
+        <b:form id="pollEditForm" horizontal="true" rendered="${pollEditBean.valid}" >
+            <b:alert severity="success" rendered="${pollEditBean.success}">
+                ${pollEditBean.successMessage}
+            </b:alert>
+            <b:alert severity="danger" rendered="${pollEditBean.failure}">
+                ${msg.editFailureMessage}<br/>
+                ${pollEditBean.failureMessage}
+            </b:alert>
+
+            <!--_________________________________ Prepared View _________________________-->
+
+            <b:container rendered="${pollEditBean.isPollPrepared() or pollEditBean.poll.new}">
+                <b:row style="margin-top: 20px"><p>${msg.pollStatusLabel}: <b:badge value="${msg.pollStatePREPARED}"/></p></b:row>
+                <b:row>
+                    <b:column span="12"><b:message for="title" id="titleAvailablity" offset="2" span="6" /> </b:column>
+                    <b:inputText span="6" label-col-md="2"  id="title" label="${msg.pollTitleLabel}" value="#{pollEditBean.poll.title}" required="true" ajax="true"  binding="${pollEditBean.titleComponent}">
+                        <f:ajax event="change" 
+                                execute="@this" 
+                                render="titleAvailablity"
+                                listener="#{pollEditBean.isTitleAvailable()}" />
+                    </b:inputText>
+                </b:row>
+                <b:row>
+                    <b:column span="12"><b:message offset="2" span="6" for="datePickerStartDate"/></b:column>
+                    <b:dateTimePicker id="datePickerStartDate" span="6" label-col-md="2" locale="${localeBean.userLocale.language}" value="#{pollEditBean.poll.startDate}" label="${msg.pollStartDateLabel}" required="true">
+                    </b:dateTimePicker>
+                </b:row>
+                <b:row>
+                    <b:column span="12"><b:message offset="2" span="6" for="datePickerEndDate"/></b:column>
+                    <b:dateTimePicker  id="datePickerEndDate" span="6" label-col-md="2" locale="${localeBean.userLocale.language}" value="#{pollEditBean.poll.endDate}" label="${msg.pollEndDateLabel}" required="true">
+                    </b:dateTimePicker>
+                </b:row>
+                <b:row>
+                    <b:column span="12"><b:message offset="2" span="6" for="pollDescriptionInput"/></b:column>
+                    <b:inputTextarea id="pollDescriptionInput" label-col-md="2" span="6" value="#{pollEditBean.poll.description}" label="${msg.pollDescriptionLabel}" required="true"/>
+                </b:row>
+                <b:row>
+                    <b:selectBooleanCheckbox label-col-md="2" span="2" value="#{pollEditBean.poll.trackingEnabled}" label="${msg.pollTrackingEnabledLabel}"  tooltip="${msg.pollTrackingEnabledHelpTooltip}" tooltip-position="auto right" caption="${msg.pollTrackingEnabledHelpLabel}" />
+                </b:row>
+
+                <!--__________ PARTICIPANTS _______________-->
+                <b:row>
+                    <h3>${msg.pollParticipantsLabel}</h3>
+                </b:row>
+
+                <b:row>
+                    <b:message for="addEmailID" col-md="5" id="addNewEmailMessage" />
+                </b:row>
+                <b:row>
+                    <b:column span="5">
+                        <div style="margin-left: 15px">
+                            <b:inputText id="addEmailID" value="${pollEditBean.tempMail}" type="email" validatorMessage="${msg.generalInvalidEmailMessage}" binding="${pollEditBean.addParticipantComponent}">
+                                <f:validateRegex pattern="([\w\.-]*[a-zA-Z0-9_]@[\w\.-]*[a-zA-Z0-9]\.[a-zA-Z][a-zA-Z\.]*[a-zA-Z])?" />
+                                <f:facet name="prepend">
+                                    <h:outputText value="@" />
+                                </f:facet>
+                                <f:facet name="append">
+                                    <b:commandButton look="primary" value="${msg.pollEditAddParticipantButtonLabel}" icon="plus" icon-align="left" action="${pollEditBean.addNewParticipant}">
+                                        <f:ajax execute="@this addEmailID" render="addEmailID participantListID addNewEmailMessage" />
+                                    </b:commandButton>
+                                </f:facet>
+                            </b:inputText> 
+                        </div>
+                    </b:column>
+                    <b:column span="1" class="polleditOrLabel">
+                        - ${msg.generalOrLabel} -
+                    </b:column>
+                    <b:column span="5">
+                        <b:button onclick="$('.participantListModal').modal()" value="${msg.pollEditEnterParticipantListButtonLabel}" style="width:75%" />
+                    </b:column>
+                </b:row>
+
+                <b:row id="participantListRow">
+                    <b:column span="10">
+                        <b:dataTable id="participantListID" striped="true" var="participant" value="${pollEditBean.poll.participants}"  page-length="10"
+                                     page-length-menu="5,10,15">
+                            <b:dataTableColumn label="${msg.pollParticipantEmailLabel}" value="${participant.email}"/>
+                            <b:dataTableColumn label="${msg.editActionsLabel}" custom-options="'width':'80px'">
+                                <b:commandButton look="link" value="" size="xs" icon="trash" icon-align="left" action="${pollEditBean.removeParticipant(participant)}" tooltip="${msg.pollEditRemoveParticipantTooltip}" tooltip-delay-show="450">
+                                    <f:ajax execute="@this participantListID" render=":#{component.namingContainer.parent.namingContainer.clientId}:participantListRow" />
+                                </b:commandButton>
+                            </b:dataTableColumn>
+                        </b:dataTable>
+                    </b:column>
+                </b:row>
+
+                <b:modal id="amodal" title="${msg.pollEditParticipantListModalLabel}" styleClass="participantListModal">                
+                    <p>${msg.pollEditImportParticipantListDescription}</p>
+                    <b:formGroup id="checklists" class="selectParticipantListCheckboxes">
+                        <ui:repeat value="${pollEditBean.participantLists}" var="list">
+                            <b:selectBooleanCheckbox caption="${list.name}" value="${pollEditBean.participantListsCheckMap[list]}"/>
+                        </ui:repeat>
+                    </b:formGroup>
+
+                    <f:facet name="footer">
+                        <b:button value="${msg.generalCancelLabel}" dismiss="modal" />
+                        <b:commandButton look="primary" value="${msg.pollEditImportLabel}" action="${pollEditBean.importParticipantLists}" onclick="$('.participantListModal').modal('hide')">
+                            <f:ajax execute="@this checklists" render="participantListID checklists" />
+                        </b:commandButton>
+                    </f:facet>
+                </b:modal>
+
+
+                <!--______________ ADD QUESTIONS ____________-->
+
+                <b:row id ="questionsAreaId">
+                    <h3>${msg.pollQuestionsLabel}</h3>
+                    <b:dropButton value="${msg.pollEditAddQuestion}" look="primary" rendered="${!(pollEditBean.questionAddMode)}" offset="4">
+                        <b:navCommandLink value="${msg.questionTypeSingleLabel}" action="${pollEditBean.addNewQuestion(QuestionType.SINGLE_CHOICE)}" icon="plus" iconAlign="left">
+                            <f:ajax execute="@this questionsAreaId"  render="questionsAreaId addQuestionBox"/>
+                        </b:navCommandLink>
+                        <b:navCommandLink value="${msg.questionTypeMultipleLabel}" action="${pollEditBean.addNewQuestion(QuestionType.MULTIPLE_CHOICE)}" icon="plus" iconAlign="left">
+                            <f:ajax execute="@this questionsAreaId"  render="questionsAreaId addQuestionBox"/>
+                        </b:navCommandLink>
+                        <b:navCommandLink value="${msg.questionTypeYesNoLabel}" action="${pollEditBean.addNewQuestion(QuestionType.YES_NO)}" icon="plus" iconAlign="left">
+                            <f:ajax execute="@this questionsAreaId"  render="questionsAreaId addQuestionBox"/>
+                        </b:navCommandLink>
+                    </b:dropButton>
+                    <p></p>
+                </b:row>
+                <b:row id="addQuestionBox">
+                    <b:column span="8" offset="1" rendered="${(pollEditBean.questionAddMode)}" class="questionAddBox">
+                        <h4>${msg.pollEditNewQuestionLabel}</h4>
+                        <b:messages for="storeQuestionButton"/>
+                        <b:inputText span="8" label-col-md="2" id="questionTitle" label="${msg.pollQuestionTitleLabel} *" value="${pollEditBean.newQuestion.title}" />
+
+                        <b:column span="5">
+                            <b:touchSpin rendered="${pollEditBean.newQuestion.questionType == QuestionType.MULTIPLE_CHOICE}" span="5" label-col-md="7" id="minChoicesId" label="${msg.questionMinChoicesLabel}" value="${pollEditBean.newQuestion.minChoices}" step="1" min="1" />
+                        </b:column>
+                        <b:column span="5">
+                            <b:touchSpin rendered="${pollEditBean.newQuestion.questionType == QuestionType.MULTIPLE_CHOICE}" span="5" label-col-md="7" id="maxChoicesId" label="${msg.questionMaxChoicesLabel}" value="${pollEditBean.newQuestion.maxChoices}" step="1" min="1"/>
+                        </b:column>
+                        <b:column span="2"></b:column>
+
+                        <h:panelGroup id="newItemListId" class="col-md-12">
+                            <p><b>${msg.pollEditQuestionOptionsLabel}</b></p>
+                            <ul class="newItemList">
+                                <h:panelGroup rendered="${pollEditBean.newQuestion.questionType == QuestionType.YES_NO}">
+                                    <li>${msg.questionYesItem}</li>
+                                    <li>${msg.questionNoItem}</li>
+                                </h:panelGroup>
+                                <ui:repeat value="${pollEditBean.newQuestion.items}" var="item" rendered="${pollEditBean.newQuestion.questionType != QuestionType.YES_NO}">
+                                    <li>${item.shortName}<h:panelGroup rendered="${item.description != null}">: ${item.description}</h:panelGroup></li>
+                                </ui:repeat>   
+                            </ul>
+                            <b:column span="6">
+                                <b:inputText span="12" label-col-md="3" id="newItem" value="${pollEditBean.tempItemName}" rendered="${pollEditBean.newQuestion.questionType != QuestionType.YES_NO}" onkeypress="if (event.keyCode == 13) {
+                                            $('.addItemButtonID').click();
+                                            return false;
+                                        }" binding="${pollEditBean.addItemComponent}">
+                                    <f:facet name="prepend">
+                                        <b:commandButton look="link" value="" class="addItemButtonID" icon="plus" icon-align="left" action="${pollEditBean.addNewItem}">
+                                            <f:ajax execute="@this newItem newItemDescription" render="newItemListId" />
+                                        </b:commandButton>
+                                    </f:facet>
+                                </b:inputText>
+                            </b:column>
+                            <b:column span="6"> 
+                                <b:inputText  span="12" placeholder="${msg.questionDescriptionLabel}" id="newItemDescription" value="${pollEditBean.tempItemDescription}" rendered="${pollEditBean.newQuestion.questionType != QuestionType.YES_NO}" onkeypress="if (event.keyCode == 13) {
+                                            $('.addItemButtonID').click();
+                                            return false;
+                                        }"/>
+                            </b:column>
+                            <b:message for="newItem" id="addNewItemMessage"/>
+                        </h:panelGroup>
+                        <div class="col-md-12">
+                            <b:commandButton id="storeQuestionButton" binding="${pollEditBean.storeQuestionButton}" look="success" icon="check" value="${msg.generalSaveLabel}" action="${pollEditBean.storeNewQuestion}"> <f:ajax execute="@this questionTitle minChoicesId maxChoicesId"  render="questionsAreaId addQuestionBox questionListAreaId"/> </b:commandButton> 
+                            <span> </span>
+                            <b:commandButton value="${msg.generalCancelLabel}" action="${pollEditBean.setQuestionAddMode(false)}"> <f:ajax execute="@this"  render="questionsAreaId addQuestionBox"/> </b:commandButton>
+                        </div>
+                    </b:column>    
+                </b:row>
+
+
+                <!--____________ QUESTION LIST ____________ -->
+
+                <b:row id="questionListAreaId">
+                    <ui:repeat value="${pollEditBean.poll.questions}" var="question" varStatus="questionVarStatus">
+                        <b:panel title="${question.title}" collapsed="true" col-md="10">
+                            <h:panelGroup id="TESTID">
+                                <h:panelGroup>
+                                    <h:panelGroup rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}">${msg.questionMinChoicesLabel} ${question.minChoices}; ${msg.questionMaxChoicesLabel}: ${question.maxChoices} <p></p></h:panelGroup>
+                                    <ul>
+                                        <h:panelGroup rendered="${question.questionType == QuestionType.YES_NO}">
+                                            <li style="float: left;width: 33.3%;">${msg.questionYesItem}</li>
+                                            <li style="float: left;width: 33.3%;">${msg.questionNoItem}</li>
+                                        </h:panelGroup>
+                                        <ui:repeat value="${question.items}" var="item" rendered="${question.questionType != QuestionType.YES_NO}">
+                                            <li style="float: left;width: 33.3%;" title="${item.description}">${item.shortName}</li>
+                                        </ui:repeat>
+                                        <li style="float: left;width: 33.3%;">${msg.questionAbsentionLabel}</li>
+                                    </ul>
+                                </h:panelGroup>
+                                <b:row>
+                                    <b:column>
+                                        <hr/>
+                                        <b:column span="10">
+                                            <span>Question-Type: 
+                                                <h:panelGroup rendered="${question.questionType == QuestionType.SINGLE_CHOICE}">${msg.questionTypeSingleLabel}</h:panelGroup> 
+                                                <h:panelGroup rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}">${msg.questionTypeMultipleLabel}</h:panelGroup>
+                                                <h:panelGroup rendered="${question.questionType == QuestionType.YES_NO}">${msg.questionTypeYesNoLabel}</h:panelGroup>
+                                            </span>
+                                        </b:column>
+                                        <b:column span="2">
+                                            <span>Actions: </span>
+                                            <b:commandButton rendered="false" look="link" value="" size="xs" icon="pencil" icon-align="left" action="${pollEditBean.startQuestionEditMode(question)}" tooltip="${msg.pollEditEditQuestionTooltip}" tooltip-delay-show="450">
+                                                <f:ajax execute="@this" render="#{component.namingContainer.parent.namingContainer.clientId}:TESTID" />
+                                            </b:commandButton>
+                                            <b:commandButton look="link" value="" size="xs" icon="trash" icon-align="left" action="${pollEditBean.removeQuestion(question)}" tooltip="${msg.pollEditRemoveQuestionTooltip}" tooltip-delay-show="450" onclick="return confirm('${msg.deleteConfirmationMessage}')">
+                                                <f:ajax execute="@this" render="#{component.namingContainer.parent.namingContainer.clientId}:questionListAreaId" />
+                                            </b:commandButton>
+                                        </b:column>
+                                    </b:column>
+                                </b:row>
+                            </h:panelGroup>
+                        </b:panel>
+                    </ui:repeat>
+                </b:row>
+            </b:container>
+
+            <!--_________________________________ Other Views _____________________________________-->
+
+            <b:container rendered="${not pollEditBean.isPollPrepared() and not pollEditBean.poll.new }">
+                <b:row style="margin-top: 20px"><p>${msg.pollStatusLabel}: <b:badge value="${msg['pollState'.concat(pollEditBean.poll.pollState)]}" /></p></b:row>
+                <b:row >
+                    <h4>${msg.pollTitleLabel}</h4>
+                    <p>#{pollEditBean.poll.title}</p>
+                    <b:message offset="2" span="6"/>
+                </b:row>
+                <b:row rendered="${pollEditBean.isPollFinished() or pollEditBean.isPollVoting() or pollEditBean.isPollPublished()}">
+                    <h4>${msg.pollStartDateLabel}</h4>
+                    <p><h:outputText value="${pollEditBean.poll.startDate}">
+                            <f:convertDateTime type="both" timeZone="Europe/Berlin" dateStyle="full"/>
+                        </h:outputText></p>
+                </b:row>
+                <b:row rendered="${pollEditBean.isPollStarted()}">
+                    <h4>${msg.pollStartDateLabel}</h4>
+                    <b:column span="12"><b:message span="6" for="startDatePicker"/></b:column>
+                    <b:dateTimePicker id="startDatePicker" span="6" locale="${localeBean.userLocale.language}" value="#{pollEditBean.poll.startDate}" required="true">
+                    </b:dateTimePicker>
+                </b:row>
+                <b:row rendered="${pollEditBean.isPollFinished() or pollEditBean.isPollPublished()}">
+                    <h4>${msg.pollEndDateLabel}</h4>
+                    <p><h:outputText value="${pollEditBean.poll.endDate}">
+                            <f:convertDateTime type="both" timeZone="Europe/Berlin" dateStyle="full"/>
+                        </h:outputText></p>
+                </b:row>
+                <b:row rendered="${pollEditBean.isPollStarted() or pollEditBean.isPollVoting()}">
+                    <h4>${msg.pollEndDateLabel}</h4>
+                    <b:column span="12"><b:message span="6" for="endDatePicker"/></b:column>
+                    <b:dateTimePicker id="endDatePicker" min-date="#{pollEditBean.poll.endDate}" span="6" locale="${localeBean.userLocale.language}" value="#{pollEditBean.poll.endDate}" required="true" >
+                    </b:dateTimePicker>
+                </b:row>
+                <b:row>
+                    <h4>${msg.pollDescriptionLabel}</h4>
+                    <p>#{pollEditBean.poll.description}</p>
+                </b:row>
+                <b:row rendered="${pollEditBean.isPollPublished()}">
+                    <h4>${msg.pollResultsResultLinkLabel}</h4>
+                    <p><b:navLink outcome="votingresult" value="${msg.pollResultPublishedLink}">
+                            <f:param name="token" value="${pollEditBean.poll.resultToken}"/>
+                        </b:navLink></p>
+                </b:row>
+                <b:row>
+                    <h4>${msg.pollEditTrackingStatus}</h4>
+                    <p><h:outputText value="${pollEditBean.poll.trackingEnabled ? msg.pollEditTrackingEnabledLabel : msg.pollEditTrackingNotEnabledLabel}"></h:outputText></p> 
+                    <h:panelGroup rendered="${(pollEditBean.isPollVoting()) and (pollEditBean.poll.trackingEnabled)}">
+                        <p>${msg.pollResultsParticipationRate}: ${pollEditBean.poll.voteCounter}/${pollEditBean.poll.participants.size()}</p>
+                        <b:commandButton value="${msg.pollEditSendReminderButtonLabel}" id="sendRemindersButton" actionListener="#{pollEditBean.sendReminders}"/>
+                    </h:panelGroup>
+                </b:row>
+
+                <!--_________ PARTICIPANTS ___________-->
+                <b:row>
+                    <h3>${msg.pollParticipantsLabel}</h3>
+                </b:row> 
+
+                <b:row id="sparticipantListRow">
+                    <b:column span="10">
+                        <b:dataTable id="sparticipantListID" striped="true" var="participant" value="${pollEditBean.poll.participants}"  page-length="10"
+                                     page-length-menu="5,10,15">
+                            <b:dataTableColumn label="${msg.pollParticipantEmailLabel}" value="${participant.email}"/>
+
+                        </b:dataTable>
+                    </b:column>
+                </b:row>
+
+                <!--_________ QUESTION LIST ___________ -->
+
+                <b:row id ="squestionsAreaId">
+                    <h3>${msg.pollQuestionsLabel}</h3>
+
+                    <p></p>
+                </b:row>
+
+                <b:row id="squestionListAreaId">
+                    <ui:repeat value="${pollEditBean.poll.questions}" var="question" varStatus="questionVarStatus">
+                        <b:panel title="${question.title}" collapsed="true" col-md="10">
+                            <h:panelGroup id="TESTID">
+                                <h:panelGroup>
+                                    <h:panelGroup rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}">${msg.questionMinChoicesLabel} ${question.minChoices}; ${msg.questionMaxChoicesLabel}: ${question.maxChoices} <p></p></h:panelGroup>
+                                    <ul>
+                                        <h:panelGroup rendered="${question.questionType == QuestionType.YES_NO}">
+                                            <li style="float: left;width: 33.3%;">${msg.questionYesItem}</li>
+                                            <li style="float: left;width: 33.3%;">${msg.questionNoItem}</li>
+                                        </h:panelGroup>
+                                        <ui:repeat value="${question.items}" var="item" rendered="${question.questionType != QuestionType.YES_NO}">
+                                            <li style="float: left;width: 33.3%;" title="${item.description}">${item.shortName}</li>
+                                        </ui:repeat>
+                                        <li style="float: left;width: 33.3%;">${msg.questionAbsentionLabel}</li>
+                                    </ul>
+                                </h:panelGroup>
+                                <b:row>
+                                    <b:column>
+                                        <hr/>
+                                        <b:column span="10">
+                                            <span>Question-Type: 
+                                                <h:panelGroup rendered="${question.questionType == QuestionType.SINGLE_CHOICE}">${msg.questionTypeSingleLabel}</h:panelGroup> 
+                                                <h:panelGroup rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}">${msg.questionTypeMultipleLabel}</h:panelGroup>
+                                                <h:panelGroup rendered="${question.questionType == QuestionType.YES_NO}">${msg.questionTypeYesNoLabel}</h:panelGroup>
+                                            </span>
+                                        </b:column>
+
+                                    </b:column>
+                                </b:row>
+                            </h:panelGroup>
+                        </b:panel>
+                    </ui:repeat>
+                </b:row>
+            </b:container>
+
+            <!--___________________________________________BUTTONS___________________________________________-->
+
+
+            <b:row class="topsep">
+                <!-- actionListener - method called during "invoke application" phase -->
+                <!-- missing action - stay on the same page -->
+                <b:commandButton id="storeButton" rendered="${pollEditBean.isPollPrepared() or pollEditBean.isPollStarted() or pollEditBean.poll.new or pollEditBean.isPollVoting() }"
+                                 offset="2" span="2" look="success" icon="check"
+                                 actionListener="#{pollEditBean.storePoll}"
+                                 value="${msg.editStoreButtonLabel}"/>
+
+                <b:commandButton id="startButton"
+                                 rendered="${not pollEditBean.poll.new and pollEditBean.isPollPrepared()}"
+                                 span="2" look="success" icon="check"
+                                 actionListener="#{pollEditBean.startPoll}"
+                                 value="${msg.editStartButtonLabel}"/>
+
+                <b:navLink outcome="pollresults" class="btn btn-success navLinkButton col-md-2" value="${msg.pollListSeeResultsTooltip}" icon="stats" rendered="${not pollEditBean.poll.new and pollEditBean.isPollFinished()}">
+                    <f:param name="uuid" value="${pollEditBean.poll.uuid}"/>
+                </b:navLink>
+
+                <b:commandButton id="publishButton"
+                                 rendered="${not pollEditBean.poll.new and pollEditBean.isPollFinished()}"
+                                 span="2" look="success" icon="check"
+                                 actionListener="#{pollEditBean.publishPoll}"
+                                 value="${msg.editPublishButtonLabel}"
+                                 disabled="${!pollEditBean.hasEnoughVotes()}"
+                                 tooltip="${pollEditBean.hasEnoughVotes() ? msg.pollResultsPublishButtonTooltip : msg.pollResultsNotEnoughVotesToPublishTooltip}"/>
+
+
+                <!-- actionListener - method called during "invoke application" phase -->
+                <!-- action - specifies the target page -->
+                <b:commandButton id="deleteButton"
+
+                                 rendered="${not pollEditBean.poll.new }"
+                                 span="2" look="danger" icon="trash"
+                                 immediate="true"
+                                 action="organizerpage"
+                                 actionListener="#{pollEditBean.deletePoll}"
+                                 value="${msg.pollEditDeleteButtonLabel}"
+                                 onclick="return confirm('${msg.deleteConfirmationMessage}')"/>
+            </b:row>
+        </b:form>
+    </ui:define>
+</ui:composition>

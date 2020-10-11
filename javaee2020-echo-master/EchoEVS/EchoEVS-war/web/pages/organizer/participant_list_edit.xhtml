@@ -1,0 +1,106 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<ui:composition template="/WEB-INF/templates/page-layout.xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:b="http://bootsfaces.net/ui">
+
+    <ui:param name="pageHeadline" value="${msg.participantListEditHeadline}"/>
+
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam id="uuid" name="uuid" value="#{participantListEditBean.uuid}"
+                         requiredMessage="${msg.uuidRequiredMessage}"/>
+        </f:metadata>
+    </ui:define>
+
+    <ui:define name="content">
+        <h:link outcome="participantlist" value="${msg.linkBackToParticipantlistoverview}"/>
+        <p style="margin-bottom: 40px"></p>
+
+        <b:alert severity="danger" rendered="${participantListEditBean.uuid == null}">
+            ${msg.uuidRequiredMessage}
+        </b:alert>
+
+        <b:alert severity="info" rendered="${participantListEditBean.uuid != null and !participantListEditBean.valid}">
+            <h:outputFormat value="${msg.participantListEditParticipantListNotFound}">
+                <f:param value="${participantListEditBean.uuid}"/>
+            </h:outputFormat>
+        </b:alert>
+
+        <b:form id="participantListEditForm" horizontal="true" rendered="${participantListEditBean.valid}">
+            <b:alert severity="success" rendered="${participantListEditBean.success}">
+                ${msg.editSuccessMessage}
+            </b:alert>
+            <b:alert severity="danger" rendered="${participantListEditBean.failure}">
+                ${msg.editFailureMessage}<br/>
+                ${participantListEditBean.failureMessage}
+            </b:alert>
+
+            <b:row>
+                <b:column span="12"><b:message offset="2" span="6" for="name"/></b:column>
+                <b:inputText span="6" label-col-md="2" id="name" label="${msg.participantListNameLabel}" value="#{participantListEditBean.participantList.name}" required="true"/>
+            </b:row>
+
+            <b:row>
+                <h3>${msg.participantListEmailListLabel}</h3>
+            </b:row> 
+            <b:row>
+                <b:message for="addEmailID" col-md="5" id="addNewEmailMessage" />
+            </b:row>
+            <b:row>
+                <b:column span="5">
+                    <div style="margin-left: 15px">
+                        <b:inputText id="addEmailID" value="${participantListEditBean.tempMail}" type="email" validatorMessage="${msg.generalInvalidEmailMessage}" binding="${participantListEditBean.addParticipantComponent}">
+                            <f:validateRegex pattern="([\w\.-]*[a-zA-Z0-9_]@[\w\.-]*[a-zA-Z0-9]\.[a-zA-Z][a-zA-Z\.]*[a-zA-Z])?" />
+                            <f:facet name="prepend">
+                                <h:outputText value="@" />
+                            </f:facet>
+                            <f:facet name="append">
+                                <b:commandButton look="primary" value="${msg.participantListAddEmailLabel}" icon="plus" icon-align="left" action="${participantListEditBean.addNewParticipant}">
+                                    <f:ajax execute="@this addEmailID" render="addEmailID participantListID addNewEmailMessage" />
+                                </b:commandButton>
+                            </f:facet>
+                        </b:inputText> 
+                    </div>
+                </b:column>
+            </b:row>
+
+            <b:row id="participantListRow">
+                <b:column span="10">
+                    <b:dataTable  id="participantListID" striped="true" var="participant" value="${participantListEditBean.participantList.participants}">
+                        <b:dataTableColumn label="${msg.participantListEmailsLabel}" value="${participant.email}" />
+                        <b:dataTableColumn label="${msg.editActionsLabel}" custom-options="'width':'80px'">
+                            <b:commandButton look="link" value="" size="xs" icon="trash" icon-align="left" action="${participantListEditBean.removeParticipant(participant)}" tooltip="${msg.participantListRemoveEmailTooltip}" tooltip-delay-show="450">
+                                <f:ajax execute="@this participantListID" render=":#{component.namingContainer.parent.namingContainer.clientId}:participantListRow" />
+                            </b:commandButton>
+                        </b:dataTableColumn>    
+                    </b:dataTable>
+                </b:column>
+            </b:row>
+
+            <b:row class="topsep">
+                <!-- actionListener - method called during "invoke application" phase -->
+                <!-- missing action - stay on the same page -->
+                <b:commandButton id="storeButton"
+                                 offset="2" span="2" look="success" icon="check"
+                                 actionListener="#{participantListEditBean.storeParticipantList}"
+                                 value="${msg.editStoreButtonLabel}"/>
+
+                <!-- actionListener - method called during "invoke application" phase -->
+                <!-- action - specifies the target page -->
+                <b:commandButton id="deleteButton"
+                                 rendered="${not participantListEditBean.participantList.new}"
+                                 span="2" look="danger" icon="trash"
+                                 immediate="true"
+                                 action="participantlist"
+                                 actionListener="#{participantListEditBean.deleteParticipantList}"
+                                 value="${msg.participantEditDeleteButtonLabel}"
+                                 onclick="return confirm('${msg.deleteConfirmationMessage}')"/>
+            </b:row>
+
+        </b:form>
+
+    </ui:define>
+</ui:composition>

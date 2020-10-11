@@ -1,0 +1,84 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<ui:composition template="/WEB-INF/templates/page-layout.xhtml"
+                xmlns:ui="http://xmlns.jcp.org/jsf/facelets"
+                xmlns="http://www.w3.org/1999/xhtml"
+                xmlns:h="http://xmlns.jcp.org/jsf/html"
+                xmlns:f="http://xmlns.jcp.org/jsf/core"
+                xmlns:b="http://bootsfaces.net/ui"
+                xmlns:hf="http://highfaces.org">
+
+    <ui:param name="pageHeadline" value="${msg.pollResultsHeadline}"/>
+
+    <ui:define name="metadata">
+        <f:metadata>
+            <f:viewParam id="token" name="token" value="#{pollResultBean.token}"/>
+            <f:importConstants type="echo.evs.enums.QuestionType"/>
+            <f:importConstants type="echo.evs.enums.PollState"/>
+        </f:metadata>
+    </ui:define>
+
+    <ui:define name="content">
+        <b:messages for="token"/>
+
+        <b:alert severity="info" rendered="${not pollResultBean.publishValid}">
+            <h:outputFormat value="${msg.pollResultPollResultNotFound}">
+                <f:param value="${pollResultBean.token}"/>
+            </h:outputFormat>
+        </b:alert>
+
+        <b:container rendered="${pollResultBean.publishValid}" style="margin-top: 20px">            
+            <b:row>
+                <b:column span="2"><b>${msg.pollTitleLabel}</b></b:column>
+                <b:column span="10"><p>#{pollResultBean.publishedPoll.title}</p></b:column>
+            </b:row>
+            <b:row>
+                <b:column span="2"><b>${msg.pollOrganizerLabel}</b></b:column>
+                <b:column span="10"><p>#{pollResultBean.publishedPoll.organizer.email}</p></b:column>  
+            </b:row>
+            <b:row>
+                <b:column span="2"><b>${msg.pollStartDateLabel}</b></b:column>
+                <b:column span="10"><p><h:outputText value="${pollResultBean.publishedPoll.startDate}"><f:convertDateTime type="both" timeZone="Europe/Berlin" dateStyle="full"/></h:outputText></p></b:column>
+            </b:row>
+            <b:row>
+                <b:column span="2"><b>${msg.pollEndDateLabel}</b></b:column>
+                <b:column span="10"><p><h:outputText value="${pollResultBean.publishedPoll.endDate}"><f:convertDateTime type="both" timeZone="Europe/Berlin" dateStyle="full"/></h:outputText></p></b:column>
+            </b:row>
+            <b:row>
+                <b:column span="2"><b>${msg.pollDescriptionLabel}</b></b:column>
+                <b:column span="10"><p>#{pollResultBean.publishedPoll.description}</p></b:column>  
+            </b:row>
+
+            <h3>${msg.pollResultsLabel}</h3>
+
+            <b:row>
+                <b:column span="2"><b>${msg.pollResultsParticipationRate}</b></b:column>
+                <b:column span="10"><p>${pollResultBean.publishedPoll.voteCounter}/${pollResultBean.publishedPoll.participants.size()} (${pollResultBean.getPercentage(pollResultBean.publishedPoll.voteCounter, pollResultBean.publishedPoll.participants.size())}%)</p></b:column>  
+            </b:row>
+
+            <h:panelGroup>
+                <ui:repeat value="${pollResultBean.publishedPoll.questions}" var="question">
+                    <b:row style="margin-top: 15px;">
+                        <b:column span="12"><b>${question.title}</b> 
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="${msg.questionTypeSingleLabel}" rendered="${question.questionType == QuestionType.SINGLE_CHOICE}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="${msg.questionTypeYesNoLabel}" rendered="${question.questionType == QuestionType.YES_NO}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="${msg.questionTypeMultipleLabel}" rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}" />
+                            <b:badge style="margin-left:10px; background-color:#b3b3b3" value="No. of votes: ${question.minChoices}-${question.maxChoices}"  rendered="${question.questionType == QuestionType.MULTIPLE_CHOICE}"/>
+                        </b:column>
+                        <b:column span="3">
+                            <hf:chart type="pie">
+                                <hf:chartSerie name="Votes" value="${pollResultBean.getResultOfQuestion(question)}" var="item" point="#{item.votes}"  tickLabel="#{item.shortName}"/>
+                            </hf:chart></b:column>
+                        <b:column span="8">
+                            <p style="padding-top:25px">${msg.pollResultsTotalVotesLabel}: ${question.totalVotes} </p>
+                            <ui:repeat value="${question.items}" var="item">
+                                <p><span title="${item.description}">${item.shortName}</span>: ${item.votes} (${pollResultBean.getPercentage(item.votes, question.totalVotes)}%)</p> 
+                            </ui:repeat>
+                            <p>${msg.questionAbsentionLabel} ${question.absentions} (${pollResultBean.getPercentage(question.absentions, question.totalVotes)}%)</p>
+                        </b:column>
+                    </b:row>
+                </ui:repeat>
+            </h:panelGroup>
+        </b:container>
+
+    </ui:define>
+</ui:composition>
